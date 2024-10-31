@@ -2,7 +2,7 @@ import os
 import time
 import zipfile
 import tempfile
-from flask import Flask, request, redirect, render_template, send_file, url_for, session
+from flask import Flask, request, redirect, render_template, send_file, url_for, session, jsonify
 from flask_cors import CORS
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -13,10 +13,11 @@ import yt_dlp
 import urllib.parse
 import json
 import shutil
+from youtube_extractor import process_tracks_using_youtube_extractor
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # Spotify API setup
 SPOTIPY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
@@ -56,17 +57,10 @@ def download_audio(youtube_url, output_path):
 
 @app.route('/download_all', methods=['POST'])
 def download_all():
-    youtube_links = request.form.get('youtube_links')
+    data = request.json
+    youtube_links = data.get('youtube_links')
     if not youtube_links:
         return "No YouTube links provided", 400
-    
-    # Step 1: URL decode
-    decoded_urls = urllib.parse.unquote(youtube_links)
-
-    # Step 2: Parse JSON
-    youtube_links = json.loads(decoded_urls)
-
-    print(youtube_links)
 
     # Create a temporary directory that will be automatically cleaned up
     temp_dir = tempfile.mkdtemp()
@@ -114,15 +108,15 @@ def search_and_download_youtube(artist, title):
 
     driver.quit()
     return youtube_url
-
-@app.route('/')
-def index():
+    
+@app.route('/playlists')
+def get_playlists():
     if not session.get('token_info'):
-        return render_template('index.html', login_url=url_for('login'))
-    else:
-        sp = spotipy.Spotify(auth=session.get('token_info').get('access_token'))
-        playlists = sp.current_user_playlists()['items']
-        return render_template('playlist.html', playlists=playlists, playlist=None) 
+        return jsonify({'authenticated': False}), 401
+    
+    sp = spotipy.Spotify(auth=session.get('token_info').get('access_token'))
+    playlists = sp.current_user_playlists()['items']
+    return jsonify(playlists)
 
 @app.route('/login')
 def login():
@@ -137,7 +131,7 @@ def callback():
     code = request.args.get('code')
     token_info = sp_oauth.get_access_token(code)
     session["token_info"] = token_info
-    return redirect(url_for('index'))
+    return redirect('http://localhost:5173')
 
 @app.route('/analyze_playlist', methods=['POST'])
 def analyze_playlist():
@@ -146,27 +140,27 @@ def analyze_playlist():
         return redirect('/login')
 
     sp = spotipy.Spotify(auth=session.get('token_info').get('access_token'))
-    playlist_url = request.form.get('playlist_url')
+    data = request.json  # Change from form to json
+    playlist_url = data.get('playlist_url')
 
     if not playlist_url:
-        return "No playlist URL provided", 400
+        return jsonify({'error':"No playlist URL provided"}), 400
+    
+    try:
+        playlist = sp.playlist(playlist_url.split('/')[-1].split('?')[0])
+        tracks = get_playlist_tracks(sp, playlist_url)
 
-    playlist = sp.playlist(playlist_url.split('/')[-1].split('?')[0])
-    tracks = get_playlist_tracks(sp, playlist_url)
+        youtube_links = process_tracks_using_youtube_extractor(tracks)
 
-    youtube_links = []
-    for track in tracks:
-        track_info = track['track']
-        artist = track_info['artists'][0]['name']
-        title = track_info['name']
-        youtube_url = search_and_download_youtube(artist, title)
-        youtube_links.append({
-            'artist': artist,
-            'title': title,
-            'youtube_url': youtube_url
+        if not youtube_links:
+            return jsonify({'error': 'No YouTube links provided'}), 400
+
+        return jsonify({
+            'playlist': playlist,
+            'youtube_links': youtube_links
         })
-
-    return render_template('playlist.html', playlist=playlist, youtube_links=youtube_links)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 def get_token():
     token_valid = False
