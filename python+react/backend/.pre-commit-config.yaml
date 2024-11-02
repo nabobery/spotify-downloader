@@ -1,0 +1,40 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.10.0  # Use the latest stable version of black
+    hooks:
+      - id: black
+        # args: ["--check", "--diff"]  # "--check" for validation, "--diff" shows what would be changed
+        types: [python]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2 # Use the latest stable version of isort
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]  # Ensures import sorting is compatible with black's style
+        types: [python]
+
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1  # Use the latest stable version of autoflake
+    hooks:
+      - id: autoflake
+        args: ["--remove-all-unused-imports", "--remove-unused-variables", "--in-place"]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: debug-statements
+      - id: detect-private-key
+      - id: check-ast
+      - id: check-json
+      - id: check-toml
+      - id: requirements-txt-fixer
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.19.0
+    hooks:
+      - id: pyupgrade
+        args: ["--py38-plus"]  # Adjust based on your minimum Python version
