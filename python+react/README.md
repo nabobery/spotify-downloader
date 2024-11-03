@@ -55,7 +55,6 @@ To set up the Flask backend locally using a virtual environment, follow these st
    ```env
    SPOTIFY_CLIENT_ID=your_spotify_client_id
    SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-   SPOTIFY_REDIRECT_URI=http://localhost:5000/callback
    FRONTEND_URL=http://localhost:3000
    ```
 

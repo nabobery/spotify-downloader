@@ -1,21 +1,13 @@
 import { useState } from "react";
-import axios from "axios";
+import { downloadTracks } from "../api";
 
 function TrackList({ tracks }) {
   const [downloading, setDownloading] = useState(false);
-  const API_URL = import.meta.env.VITE_API_URL;
 
   const handleDownloadAll = async () => {
     try {
       setDownloading(true);
-      const response = await axios.post(
-        `${API_URL}/download_all`,
-        { youtube_links: tracks },
-        {
-          responseType: "blob",
-          withCredentials: true,
-        }
-      );
+      const response = await downloadTracks(tracks);
 
       // Create a download link
       const url = window.URL.createObjectURL(new Blob([response.data]));

@@ -11,8 +11,7 @@ function Login() {
             Welcome!
           </h2>
           <p className="text-primary-dark/70 mb-8">
-            Connect your Spotify account to analyze your playlists and download
-            songs
+            Connect your Spotify account to analyze your playlists and download songs
           </p>
           <a
             href={`${API_URL}/login`}

@@ -1,20 +1,19 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PlaylistCard from "../components/PlaylistCard";
-import axios from "axios";
+import { getPlaylists } from "../api";
+import { useAuth } from "../components/AuthContext";
 
 function Home() {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const API_URL = import.meta.env.VITE_API_URL;
+  const { token } = useAuth();
 
   useEffect(() => {
     const fetchPlaylists = async () => {
       try {
-        const response = await axios.get(`${API_URL}/playlists`, {
-          withCredentials: true,
-        });
+        const response = await getPlaylists();
         setPlaylists(response.data);
       } catch (error) {
         if (error.response?.status === 401) {
@@ -25,8 +24,12 @@ function Home() {
       }
     };
 
-    fetchPlaylists();
-  }, [navigate]);
+    if (token) {
+      fetchPlaylists();
+    } else {
+      navigate("/login");
+    }
+  }, [navigate, token]);
 
   if (loading) {
     return (

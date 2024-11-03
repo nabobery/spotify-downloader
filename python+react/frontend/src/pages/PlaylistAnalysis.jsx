@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { analyzePlaylist } from "../api";
+import { useAuth } from "../components/AuthContext";
 import TrackList from "../components/TrackList";
 
 function PlaylistAnalysis() {
@@ -9,17 +10,13 @@ function PlaylistAnalysis() {
   const [error, setError] = useState(null);
   const { id } = useParams();
   const navigate = useNavigate();
-  const API_URL = import.meta.env.VITE_API_URL;
+  const { token } = useAuth();
 
   useEffect(() => {
-    const analyzePlaylist = async () => {
+    const fetchPlaylistData = async () => {
       try {
-        const response = await axios.post(
-          `${API_URL}/analyze_playlist`,
-          {
-            playlist_url: `https://open.spotify.com/playlist/${id}`,
-          },
-          { withCredentials: true }
+        const response = await analyzePlaylist(
+          `https://open.spotify.com/playlist/${id}`
         );
         setPlaylistData(response.data);
       } catch (error) {
@@ -33,8 +30,12 @@ function PlaylistAnalysis() {
       }
     };
 
-    analyzePlaylist();
-  }, [id, navigate]);
+    if (token) {
+      fetchPlaylistData();
+    } else {
+      navigate("/login");
+    }
+  }, [id, navigate, token]);
 
   if (loading) {
     return (

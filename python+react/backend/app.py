@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import time
 import zipfile
+from functools import wraps
 
 import spotipy
 from flask import Flask, jsonify, redirect, request, send_file, session
@@ -17,18 +18,55 @@ CORS(app, supports_credentials=True)
 # Spotify API setup
 SPOTIPY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIPY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-SPOTIPY_REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 SCOPE = "playlist-read-private"
 
 youtube_extractor = YouTubeLinksExtractor()
 
 
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return jsonify({"error": "No authorization token provided"}), 401
+
+        token = auth_header.split(" ")[1]
+        try:
+            # Verify token with Spotify
+            sp = spotipy.Spotify(auth=token)
+            sp.current_user()  # This will fail if token is invalid
+            return f(*args, **kwargs)
+        except Exception as e:
+            return jsonify({"error": "Invalid token"}), 401
+
+    return decorated
+
+
+def require_auth_async(f):
+    @wraps(f)
+    async def decorated_async(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return jsonify({"error": "No authorization token provided"}), 401
+
+        token = auth_header.split(" ")[1]
+        try:
+            # Verify token with Spotify
+            sp = spotipy.Spotify(auth=token)
+            sp.current_user()  # This will fail if token is invalid
+            return await f(*args, **kwargs)
+        except Exception as e:
+            return jsonify({"error": "Invalid token"}), 401
+
+    return decorated_async
+
+
 def create_spotify_oauth():
     return SpotifyOAuth(
         client_id=SPOTIPY_CLIENT_ID,
         client_secret=SPOTIPY_CLIENT_SECRET,
-        redirect_uri=SPOTIPY_REDIRECT_URI,
+        redirect_uri=f"{FRONTEND_URL}/callback",
         scope=SCOPE,
     )
 
@@ -74,11 +112,11 @@ async def download_all():
 
 
 @app.route("/playlists")
+@require_auth
 def get_playlists():
-    if not session.get("token_info"):
-        return jsonify({"authenticated": False}), 401
-
-    sp = spotipy.Spotify(auth=session.get("token_info").get("access_token"))
+    auth_header = request.headers.get("Authorization")
+    token = auth_header.split(" ")[1]
+    sp = spotipy.Spotify(auth=token)
     playlists = sp.current_user_playlists()["items"]
     return jsonify(playlists)
 
@@ -90,23 +128,40 @@ def login():
     return redirect(auth_url)
 
 
+@app.route("/refresh_token", methods=["POST"])
+def refresh_token():
+    try:
+        data = request.json
+        refresh_token = data.get("refresh_token")
+
+        if not refresh_token:
+            return jsonify({"error": "No refresh token provided"}), 400
+
+        sp_oauth = create_spotify_oauth()
+        token_info = sp_oauth.refresh_access_token(refresh_token)
+
+        return jsonify(token_info), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/callback")
 def callback():
     sp_oauth = create_spotify_oauth()
     session.clear()
     code = request.args.get("code")
     token_info = sp_oauth.get_access_token(code)
-    session["token_info"] = token_info
-    return redirect(FRONTEND_URL)
+    return jsonify(token_info), 200
 
 
 @app.route("/analyze_playlist", methods=["POST"])
+@require_auth_async
 async def analyze_playlist():
-    session["token_info"], authorized = get_token()
-    if not authorized:
-        return redirect("/login")
+    auth_header = request.headers.get("Authorization")
+    token = auth_header.split(" ")[1]
+    sp = spotipy.Spotify(auth=token)
 
-    sp = spotipy.Spotify(auth=session.get("token_info").get("access_token"))
     data = request.json
     playlist_url = data.get("playlist_url")
 
