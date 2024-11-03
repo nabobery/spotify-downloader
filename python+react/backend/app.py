@@ -18,6 +18,7 @@ CORS(app, supports_credentials=True)
 SPOTIPY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIPY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 SPOTIPY_REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 SCOPE = "playlist-read-private"
 
 youtube_extractor = YouTubeLinksExtractor()
@@ -96,7 +97,7 @@ def callback():
     code = request.args.get("code")
     token_info = sp_oauth.get_access_token(code)
     session["token_info"] = token_info
-    return redirect("http://localhost:5173")
+    return redirect(FRONTEND_URL)
 
 
 @app.route("/analyze_playlist", methods=["POST"])
@@ -148,4 +149,4 @@ def get_token():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

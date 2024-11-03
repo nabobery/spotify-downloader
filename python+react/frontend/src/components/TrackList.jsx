@@ -3,12 +3,13 @@ import axios from "axios";
 
 function TrackList({ tracks }) {
   const [downloading, setDownloading] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const handleDownloadAll = async () => {
     try {
       setDownloading(true);
       const response = await axios.post(
-        "http://localhost:5000/download_all",
+        `${API_URL}/download_all`,
         { youtube_links: tracks },
         {
           responseType: "blob",

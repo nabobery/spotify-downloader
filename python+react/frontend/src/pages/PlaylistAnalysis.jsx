@@ -9,12 +9,13 @@ function PlaylistAnalysis() {
   const [error, setError] = useState(null);
   const { id } = useParams();
   const navigate = useNavigate();
+  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const analyzePlaylist = async () => {
       try {
         const response = await axios.post(
-          "http://localhost:5000/analyze_playlist",
+          `${API_URL}/analyze_playlist`,
           {
             playlist_url: `https://open.spotify.com/playlist/${id}`,
           },

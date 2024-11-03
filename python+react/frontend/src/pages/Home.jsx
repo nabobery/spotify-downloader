@@ -7,16 +7,14 @@ function Home() {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const fetchPlaylists = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:5000/playlists",
-          {
-            withCredentials: true,
-          }
-        );
+        const response = await axios.get(`${API_URL}/playlists`, {
+          withCredentials: true,
+        });
         setPlaylists(response.data);
       } catch (error) {
         if (error.response?.status === 401) {

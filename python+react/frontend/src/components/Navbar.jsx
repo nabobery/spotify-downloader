@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 
 function Navbar() {
   const location = useLocation();
+  const API_URL = import.meta.env.VITE_API_URL;
 
   return (
     <nav className="bg-primary shadow-md">
@@ -33,7 +34,7 @@ function Navbar() {
               My Playlists
             </Link>
             <a
-              href="http://localhost:5000/login"
+              href={`${API_URL}/login`}
               className="bg-primary-medium text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors"
             >
               Login with Spotify
